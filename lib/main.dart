@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:bass_fishing_ai_clean_start/screens/point_recommend_screen.dart';
+import 'screens/community_screen.dart'; // 추가
 
 void main() {
   runApp(const MyApp());
@@ -35,7 +36,7 @@ class _MainScreenState extends State<MainScreen> {
 
   final List<Widget> _pages = [
     const Center(child: Text("지도", style: TextStyle(fontSize: 20))),
-    const Center(child: Text("커뮤니티", style: TextStyle(fontSize: 20))),
+    const CommunityScreen(), // ← 여기!
     const PointRecommendScreen(),
     const Center(child: Text("쇼핑", style: TextStyle(fontSize: 20))),
     const Center(child: Text("설정", style: TextStyle(fontSize: 20))),
