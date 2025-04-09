@@ -1,9 +1,9 @@
 import 'dart:io';
-
+import 'package:http/http.dart' as http;
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
-import 'package:geolocator/geolocator.dart';
 import 'package:intl/intl.dart';
+import '../screens/address_search_page.dart';
 
 class UploadCatchForm extends StatefulWidget {
   const UploadCatchForm({super.key});
@@ -16,27 +16,10 @@ class _UploadCatchFormState extends State<UploadCatchForm> {
   File? _imageFile;
   String? _rig;
   final _spotController = TextEditingController();
-  Position? _position;
+  final _addressController = TextEditingController();
   String _timestamp = DateFormat('yyyy-MM-dd HH:mm:ss').format(DateTime.now());
 
   final List<String> _rigOptions = ['다운샷', '노싱커', '텍사스리그', '프리리그'];
-
-  @override
-  void initState() {
-    super.initState();
-    _getLocation();
-  }
-
-  Future<void> _getLocation() async {
-    final permission = await Geolocator.requestPermission();
-    if (permission != LocationPermission.denied &&
-        permission != LocationPermission.deniedForever) {
-      final position = await Geolocator.getCurrentPosition();
-      setState(() {
-        _position = position;
-      });
-    }
-  }
 
   Future<void> _pickImage() async {
     final picker = ImagePicker();
@@ -48,14 +31,42 @@ class _UploadCatchFormState extends State<UploadCatchForm> {
     }
   }
 
-  void _uploadCatch() {
-    // 여기에 서버 전송 로직 들어갈 예정
-    print('사진: ${_imageFile?.path}');
-    print('채비: $_rig');
-    print('포인트: ${_spotController.text}');
-    print('위치: ${_position?.latitude}, ${_position?.longitude}');
-    print('시간: $_timestamp');
-    Navigator.of(context).pop(); // 업로드 후 팝업 닫기
+  void _uploadCatch() async {
+    if (_imageFile == null ||
+        _rig == null ||
+        _spotController.text.isEmpty ||
+        _addressController.text.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("모든 항목을 입력해주세요.")),
+      );
+      return;
+    }
+
+    //final uri = Uri.parse("http://127.0.0.1:8000/upload_catch");
+    final uri = Uri.parse("https://bass-ai-api.onrender.com/upload_catch");
+
+    final request = http.MultipartRequest('POST', uri);
+
+    request.files.add(await http.MultipartFile.fromPath('photo', _imageFile!.path));
+    request.fields['address'] = _addressController.text;
+    request.fields['timestamp'] = _timestamp;
+    request.fields['temp'] = "0";
+    request.fields['condition'] = "미확인";
+    request.fields['rig'] = _rig!;
+    request.fields['spot_name'] = _spotController.text;
+
+    final response = await request.send();
+
+    if (response.statusCode == 200) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("업로드 완료!")),
+      );
+      Navigator.of(context).pop();
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text("업로드 실패: ${response.statusCode}")),
+      );
+    }
   }
 
   @override
@@ -113,13 +124,42 @@ class _UploadCatchFormState extends State<UploadCatchForm> {
             ),
             const SizedBox(height: 16),
 
-            Align(
-              alignment: Alignment.centerLeft,
-              child: _position != null
-                  ? Text('위치: ${_position!.latitude.toStringAsFixed(5)}, ${_position!.longitude.toStringAsFixed(5)}')
-                  : const Text('위치 가져오는 중...'),
+            Row(
+              children: [
+                Expanded(
+                  child: TextField(
+                    controller: _addressController,
+                    readOnly: true,
+                    decoration: const InputDecoration(
+                      labelText: '주소',
+                      border: OutlineInputBorder(),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                ElevatedButton(
+                  onPressed: () async {
+                    final result = await Navigator.push(
+                      context,
+                      MaterialPageRoute(builder: (_) => const AddressSearchPage()),
+                    );
+                    if (result != null) {
+                      setState(() {
+                        _addressController.text = result;
+                      });
+                    }
+                  },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFF80CBC4),
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 18),
+                  ),
+                  child: const Text('검색'),
+                ),
+              ],
             ),
-            const SizedBox(height: 8),
+
+            const SizedBox(height: 16),
 
             Align(
               alignment: Alignment.centerLeft,
@@ -136,7 +176,7 @@ class _UploadCatchFormState extends State<UploadCatchForm> {
                   foregroundColor: Colors.white,
                   padding: const EdgeInsets.symmetric(vertical: 14),
                 ),
-                child: const Text('업로드'),
+                child: const Icon(Icons.send), // 간단한 업로드 아이콘
               ),
             ),
           ],

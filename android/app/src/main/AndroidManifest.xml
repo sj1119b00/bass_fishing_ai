@@ -4,7 +4,7 @@
     <uses-permission android:name="android.permission.INTERNET"/>
 
     <application
-        android:label="bass_fishing_ai_clean_start"
+        android:label="Bass AI"
         android:icon="@mipmap/ic_launcher">
         <activity
             android:name=".MainActivity"
